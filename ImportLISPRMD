@@ -1,0 +1,57 @@
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+CREATE procedure [dbo].[ImportLISPRMD] @path As varChar(128), @filename As varChar(128), @emailRecipient As varchar(128)
+As
+
+Begin
+/*
+Drop Table [dbo].[tbl_LISPRMD_In]
+Create Table [dbo].[tbl_LISPRMD_In] (col001 varchar(max))
+*/
+
+Truncate Table [dbo].[tbl_LISPRMD_In]
+
+Declare @BulkCmd As nvarChar(4000)
+Set		@BulkCmd = "BULK INSERT tbl_LISPRMD_In FROM '"+@path+@filename+"' WITH (FIELDTERMINATOR = '\n')"
+Exec	(@BulkCmd)
+=
+Declare @today As DateTime
+Set @today=getDate()
+
+Insert	Into [dbo].[tbl_LISPRMD_Detail]
+Select	Cast(SUBSTRING(LI.Col001,1,12) As VarChar(12)) As [ClaimNumber],
+		Cast(SUBSTRING(LI.Col001,13,5) As VarChar(5)) As [ContractNumber],
+		Cast(SUBSTRING(LI.Col001,18,3) As VarChar(3)) As [PBPNumber],
+		Cast(SUBSTRING(LI.Col001,21,3) As VarChar(3)) As [SegmentNumber],
+		Cast(SUBSTRING(LI.Col001,24,8) As VarChar(8)) As [RunDate],
+		Cast(SUBSTRING(LI.Col001,32,8) As VarChar(8)) As [SubsidyStartDate],
+		Cast(SUBSTRING(LI.Col001,40,8) As VarChar(8)) As [SubsidyEndDate],
+		Cast(SUBSTRING(LI.Col001,48,3) As VarChar(3)) As [PartDPremiumSubsidyPercentage],
+		Cast(SUBSTRING(LI.Col001,51,1) As VarChar(1)) As [Low-IncomeCo-PaymentLevelID],
+		Cast(SUBSTRING(LI.Col001,52,8) As VarChar(8)) As [BeneficiaryEnrollmentEffectiveDate],
+		Cast(SUBSTRING(LI.Col001,60,8) As VarChar(8)) As[BeneficiaryEnrollmentEndDate] ,
+		Cast(SUBSTRING(LI.Col001,68,8) As VarChar(8)) As [PartCPremiumAmount],
+		Cast(SUBSTRING(LI.Col001,76,8) As VarChar(8)) As [PartDPremiumAmount],
+		Cast(SUBSTRING(LI.Col001,84,8) As VarChar(8)) As [PartDLateEnrollmentPenaltyAmount],
+		Cast(SUBSTRING(LI.Col001,92,8) As VarChar(8)) As [LISSubsidyAmount],
+		Cast(SUBSTRING(LI.Col001,100,8) As VarChar(8)) As [LISPenaltySubsidyAmount],
+		Cast(SUBSTRING(LI.Col001,108,8) As VarChar(8)) As [PartDPenaltyWaivedAmount],
+		Cast(SUBSTRING(LI.Col001,116,8) As VarChar(8)) As [TotalPremiumAmount],
+		Cast(SUBSTRING(LI.Col001,124,8) As VarChar(8)) As [DeMinimisDifferentialAmount],
+		Cast(SUBSTRING(LI.Col001,132,147) As VarChar(147)) As [Filler01],
+		@today As DateImported,
+		@filename As [FileName]
+From	[dbo].[tbl_LISPRMD_In] As LI
+Left	Outer Join [dbo].[tbl_LISPRMD_Detail] As LD
+		On LD.[ClaimNumber]=SUBSTRING(LI.Col001,1,12)
+		And LD.[ContractNumber]=SUBSTRING(LI.Col001,13,5)
+		And LD.[PBPNumber]=SUBSTRING(LI.Col001,18,3)
+		And LD.[FileName]=@filename
+Where	SUBSTRING(LI.Col001,1,12) <> ' '
+        And LD.[ClaimNumber] Is Null
+
+End
